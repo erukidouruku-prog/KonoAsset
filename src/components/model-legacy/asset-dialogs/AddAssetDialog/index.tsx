@@ -19,6 +19,10 @@ export type AddAssetDialogContextType = {
 
   duplicateWarningItems: AssetSummary[]
   setDuplicateWarningItems: (items: AssetSummary[]) => void
+
+  // [custom] Deep Link経由で開かれたとき、Booth情報の取得を自動実行するためのフラグ
+  autoBoothFetch: boolean
+  setAutoBoothFetch: (value: boolean) => void
 }
 
 export const AddAssetDialogContext = createContext<AddAssetDialogContextType>({
@@ -26,6 +30,9 @@ export const AddAssetDialogContext = createContext<AddAssetDialogContextType>({
 
   duplicateWarningItems: [],
   setDuplicateWarningItems: () => {},
+
+  autoBoothFetch: false,
+  setAutoBoothFetch: () => {},
 })
 
 type Props = {

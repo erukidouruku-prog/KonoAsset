@@ -1,5 +1,5 @@
 import { convertToBoothURL, extractBoothItemId } from '@/lib/utils'
-import { useState, useContext, ChangeEvent } from 'react'
+import { useState, useContext, useEffect, ChangeEvent } from 'react'
 import { AddAssetDialogContext } from '../../../../../AddAssetDialog'
 import { sep } from '@tauri-apps/api/path'
 import { AssetFormType } from '@/lib/form'
@@ -40,9 +40,8 @@ export const useBoothInputTabForAddDialog = ({
   const { t } = useLocalization()
   const { toast } = useToast()
 
-  const { assetPaths, setDuplicateWarningItems } = useContext(
-    AddAssetDialogContext,
-  )
+  const { assetPaths, setDuplicateWarningItems, autoBoothFetch, setAutoBoothFetch } =
+    useContext(AddAssetDialogContext)
 
   const backToPreviousTab = () => {
     setTab('selector')
@@ -56,8 +55,10 @@ export const useBoothInputTabForAddDialog = ({
     setTab('duplicate-warning')
   }
 
-  const getAssetDescriptionFromBooth = async () => {
-    if (fetching || boothItemId === null) {
+  const getAssetDescriptionFromBooth = async (overrideBoothItemId?: number) => {
+    const targetBoothItemId = overrideBoothItemId ?? boothItemId
+
+    if (fetching || targetBoothItemId === null) {
       return
     }
 
@@ -65,7 +66,7 @@ export const useBoothInputTabForAddDialog = ({
       setFetching(true)
 
       const result = await getAndSetAssetInfoFromBoothToForm({
-        boothItemId: boothItemId,
+        boothItemId: targetBoothItemId,
         form: form,
         setImageUrls,
       })
@@ -89,6 +90,24 @@ export const useBoothInputTabForAddDialog = ({
       setFetching(false)
     }
   }
+
+  // [custom] Deep Link経由でboothItemIdが渡された場合、「取得」を1回だけ自動実行する
+  useEffect(() => {
+    if (!autoBoothFetch || fetching) {
+      return
+    }
+
+    const id = form.getValues('boothItemId')
+    if (id === null || id === undefined) {
+      return
+    }
+
+    setAutoBoothFetch(false)
+    setBoothItemId(id)
+    setBoothUrlInput(convertToBoothURL(id))
+    getAssetDescriptionFromBooth(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoBoothFetch, fetching])
 
   const onUrlInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value

@@ -65,6 +65,9 @@ export const useAddAssetDialog = ({
   // 1以上の場合、その回数だけフォームのリセットを行わずにダイアログを開く
   const [formClearSuppressionCount, setFormClearSuppressionCount] = useState(0)
 
+  // [custom] Deep Link経由で開かれたとき、Booth情報の取得を自動実行するためのフラグ
+  const [autoBoothFetch, setAutoBoothFetch] = useState(false)
+
   const { toast } = useToast()
   const { t } = useLocalization()
 
@@ -229,6 +232,8 @@ export const useAddAssetDialog = ({
     setAssetPaths,
     duplicateWarningItems,
     setDuplicateWarningItems,
+    autoBoothFetch,
+    setAutoBoothFetch,
   }
 
   const onTaskCompleted = () => {
@@ -377,6 +382,9 @@ export const useAddAssetDialog = ({
 
           setAssetPaths(path)
           form.setValue('boothItemId', boothItemId)
+
+          // [custom] boothItemIdが渡されていれば「取得」を自動実行する
+          setAutoBoothFetch(boothItemId != null)
 
           setTab('booth-input')
 

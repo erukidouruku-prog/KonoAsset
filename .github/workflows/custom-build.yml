@@ -1,0 +1,48 @@
+name: "Custom Build (auto-booth-fetch)"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "custom/auto-booth-fetch"
+
+jobs:
+  build:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-custom-${{ runner.os }}"
+          workspaces: "./src-backend -> target"
+
+      - name: install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: build tauri app
+        run: pnpm tauri build
+
+      - name: upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KonoAsset-custom-installer
+          path: src-backend/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
