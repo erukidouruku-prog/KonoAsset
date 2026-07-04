@@ -10,6 +10,9 @@ pub struct BoothAssetInfo {
     pub image_urls: Vec<String>,
     pub published_at: i64,
     pub estimated_asset_type: Option<AssetType>,
+    // [custom] タグ・カテゴリ・対応アバターの自動推定に使う追加フィールド
+    pub tags: Vec<String>,
+    pub description: String,
 }
 
 #[derive(Deserialize)]
@@ -20,6 +23,16 @@ pub(crate) struct BoothJsonSchema {
     pub images: Vec<BoothPximg>,
     pub category: BoothCategory,
     pub published_at: String,
+    // [custom] JSONに存在しない場合でも壊れないよう default を付ける
+    #[serde(default)]
+    pub tags: Vec<BoothTag>,
+    #[serde(default)]
+    pub description: String,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct BoothTag {
+    pub name: String,
 }
 
 #[derive(Deserialize)]

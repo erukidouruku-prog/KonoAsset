@@ -55,6 +55,8 @@ impl BoothFetcher {
             image_urls,
             published_at,
             estimated_asset_type,
+            tags: response.tags.into_iter().map(|t| t.name).collect(),
+            description: response.description,
         };
 
         self.cache.insert(id, result.clone());

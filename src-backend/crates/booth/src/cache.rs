@@ -45,6 +45,8 @@ mod tests {
             estimated_asset_type: Some(AssetType::Avatar),
             image_urls: vec![],
             published_at: 12345,
+            tags: vec![],
+            description: String::new(),
         }
     }
 

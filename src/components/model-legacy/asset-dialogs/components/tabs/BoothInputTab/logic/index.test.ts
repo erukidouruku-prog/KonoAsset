@@ -25,6 +25,8 @@ const mockBoothAssetInfo: BoothAssetInfo = {
     'https://null-route.konoasset.dev/image2.jpg',
   ],
   publishedAt: 123,
+  tags: [],
+  description: '',
 }
 
 vi.mock('@/lib/bindings', async () => {
