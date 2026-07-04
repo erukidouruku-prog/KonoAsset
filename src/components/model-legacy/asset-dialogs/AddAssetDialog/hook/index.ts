@@ -16,6 +16,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { AddAssetDialogContextType } from '..'
 import { createPreAsset, sendAssetImportRequest } from '../logic'
+import { getAndSetAssetInfoFromBoothToForm } from '../../components/tabs/BoothInputTab/logic'
 import { PreferenceContext } from '@/components/context/PreferenceContext'
 import { useLocalization } from '@/hooks/use-localization'
 import { useAssetSummaryViewStore } from '@/stores/AssetSummaryViewStore'
@@ -64,9 +65,6 @@ export const useAddAssetDialog = ({
 
   // 1以上の場合、その回数だけフォームのリセットを行わずにダイアログを開く
   const [formClearSuppressionCount, setFormClearSuppressionCount] = useState(0)
-
-  // [custom] Deep Link経由で開かれたとき、Booth情報の取得を自動実行するためのフラグ
-  const [autoBoothFetch, setAutoBoothFetch] = useState(false)
 
   const { toast } = useToast()
   const { t } = useLocalization()
@@ -232,8 +230,6 @@ export const useAddAssetDialog = ({
     setAssetPaths,
     duplicateWarningItems,
     setDuplicateWarningItems,
-    autoBoothFetch,
-    setAutoBoothFetch,
   }
 
   const onTaskCompleted = () => {
@@ -300,7 +296,10 @@ export const useAddAssetDialog = ({
     return false
   }
 
-  const submit = async (ignoreNonExistingPaths: boolean) => {
+  const submit = async (
+    ignoreNonExistingPaths: boolean,
+    overridePaths?: string[],
+  ) => {
     if (submitting) {
       return
     }
@@ -334,7 +333,7 @@ export const useAddAssetDialog = ({
         return
       }
 
-      const paths = assetPaths.filter((path) => {
+      const paths = (overridePaths ?? assetPaths).filter((path) => {
         if (!ignoreNonExistingPaths) {
           return true
         }
@@ -366,13 +365,19 @@ export const useAddAssetDialog = ({
     }
   }
 
+  // [custom] Deep Link自動登録から、常に最新のsubmit(最新のpreference等を含む)を呼ぶための参照
+  const submitRef = useRef(submit)
+  useEffect(() => {
+    submitRef.current = submit
+  })
+
   useEffect(() => {
     let isCancelled = false
     let unlistenCompleteFn: UnlistenFn | undefined = undefined
 
     const setupListener = async () => {
       try {
-        unlistenCompleteFn = await events.addAssetDeepLink.listen((e) => {
+        unlistenCompleteFn = await events.addAssetDeepLink.listen(async (e) => {
           if (isCancelled) return
 
           const path = e.payload.path
@@ -383,12 +388,43 @@ export const useAddAssetDialog = ({
           setAssetPaths(path)
           form.setValue('boothItemId', boothItemId)
 
-          // [custom] boothItemIdが渡されていれば「取得」を自動実行する
-          setAutoBoothFetch(boothItemId != null)
-
           setTab('booth-input')
 
           openDialogWithoutClearForm()
+
+          // [custom] 全自動登録:
+          // boothItemId があれば、Booth情報の取得→登録実行まで自動で行う。
+          // 取得失敗時は booth-input タブに留まり(手動フォールバック)、
+          // 重複の可能性があるときは自動登録せず確認画面を出す(安全弁)。
+          if (boothItemId == null) return
+
+          try {
+            const result = await getAndSetAssetInfoFromBoothToForm({
+              boothItemId,
+              form,
+              setImageUrls,
+            })
+
+            if (isCancelled) return
+
+            if (result.status !== 'ok') {
+              toast({
+                title: t('addasset:booth-input:failed-to-get-info'),
+                description: result.error,
+              })
+              return
+            }
+
+            if (result.data.duplicated) {
+              setDuplicateWarningItems(result.data.duplicatedItems)
+              setTab('duplicate-warning')
+              return
+            }
+
+            await submitRef.current(false, path)
+          } catch (error) {
+            console.error('[custom] auto register failed:', error)
+          }
         })
 
         if (isCancelled) {
@@ -408,7 +444,7 @@ export const useAddAssetDialog = ({
       isCancelled = true
       unlistenCompleteFn?.()
     }
-  }, [form, clearForm, openDialogWithoutClearForm])
+  }, [form, clearForm, openDialogWithoutClearForm, t, toast])
 
   return {
     form,
