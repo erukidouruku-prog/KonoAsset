@@ -405,7 +405,10 @@ export const useAddAssetDialog = ({
               setImageUrls,
             })
 
-            if (isCancelled) return
+            // 注意: ここで isCancelled を見てはいけない。
+            // openDialogWithoutClearForm() により再レンダーが起きてこのエフェクトは
+            // 再購読される(=isCancelledがtrueになる)が、走行中のこのパイプラインは
+            // 最後まで完走させる必要がある。setState系は再購読後も安全に動く。
 
             if (result.status !== 'ok') {
               toast({
