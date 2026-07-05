@@ -419,7 +419,30 @@ export const useAddAssetDialog = ({
             }
 
             if (result.data.duplicated) {
-              setDuplicateWarningItems(result.data.duplicatedItems)
+              const items = result.data.duplicatedItems
+
+              // [custom] 重複が1件だけなら「ここに追加する」を自動実行して閉じる。
+              // 候補が複数のときだけ、どれに追加するか選んでもらう画面を出す。
+              if (items.length === 1) {
+                const importResult = await commands.importFileEntriesToAsset(
+                  items[0].id,
+                  path,
+                )
+
+                if (importResult.status === 'ok') {
+                  setTab('empty')
+                  setDialogOpen(false)
+                  toast({
+                    title: '既存アセットにファイルを追加しました',
+                    description: items[0].name,
+                    duration: 3000,
+                  })
+                  return
+                }
+                // 追加に失敗した場合は従来の確認画面にフォールバック
+              }
+
+              setDuplicateWarningItems(items)
               setTab('duplicate-warning')
               return
             }
@@ -447,7 +470,7 @@ export const useAddAssetDialog = ({
       isCancelled = true
       unlistenCompleteFn?.()
     }
-  }, [form, clearForm, openDialogWithoutClearForm, t, toast])
+  }, [form, clearForm, openDialogWithoutClearForm, t, toast, setDialogOpen])
 
   return {
     form,
